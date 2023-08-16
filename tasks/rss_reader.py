@@ -61,15 +61,21 @@ def rss_parser(
         parsed_data = dict()
         for elem in fields_channel:
             if elem == './/category':
-                categories = [category.text for category in channel.findall('.//category')]
+                categories = []
+                for category in channel.findall('.//category'):
+                    category_text = category.text
+                    if category_text not in categories:
+                        categories.append(category_text)
                 if categories:
                     parsed_data['categories'] = categories
             else:
                 if channel.findtext(elem):
                     parsed_data[elem] = channel.findtext(elem)
-        parsed_data['items'] = []
+
         item_data = dict()
         for item in items:
+            if parsed_data.get('items') is None:
+                parsed_data['items'] = []
             item_data.clear()
             for elem in fields_item:
                 if item.findtext(elem):
@@ -103,20 +109,21 @@ def rss_parser(
             if parsed_data.get('description'):
                 output.append(f"Description: {parsed_data.get('description')}\n")
 
-            for item in parsed_data.get('items'):
-                if item.get('title'):
-                    output.append(f"Title: {item.get('title')}")
-                if item.get('author'):
-                    output.append(f"Author: {item.get('author')}")
-                if item.get('pubDate'):
-                    output.append(f"Published: {item.get('pubDate')}")
-                if item.get('link'):
-                    output.append(f"Link: {item.get('link')}")
-                if item.get('category'):
-                    output.append(f"Category: {item.get('category')}")
-                output.append("")
-                if item.get('description'):
-                    output.append(f"{item.get('description')}\n")
+            if parsed_data.get('items'):
+                for item in parsed_data.get('items'):
+                    if item.get('title'):
+                        output.append(f"Title: {item.get('title')}")
+                    if item.get('author'):
+                        output.append(f"Author: {item.get('author')}")
+                    if item.get('pubDate'):
+                        output.append(f"Published: {item.get('pubDate')}")
+                    if item.get('link'):
+                        output.append(f"Link: {item.get('link')}")
+                    if item.get('category'):
+                        output.append(f"Category: {item.get('category')}")
+                    output.append("")
+                    if item.get('description'):
+                        output.append(f"{item.get('description')}\n")
 
             return output
 
