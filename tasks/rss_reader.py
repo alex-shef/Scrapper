@@ -61,15 +61,21 @@ def rss_parser(
         parsed_data = dict()
         for elem in fields_channel:
             if elem == './/category':
-                categories = [category.text for category in channel.findall('.//category')]
+                categories = []
+                for category in channel.findall('.//category'):
+                    category_text = category.text
+                    if category_text not in categories:
+                        categories.append(category_text)
                 if categories:
                     parsed_data['categories'] = categories
             else:
                 if channel.findtext(elem):
                     parsed_data[elem] = channel.findtext(elem)
-        parsed_data['items'] = []
+
         item_data = dict()
         for item in items:
+            if parsed_data.get('items') is None:
+                parsed_data['items'] = []
             item_data.clear()
             for elem in fields_item:
                 if item.findtext(elem):
