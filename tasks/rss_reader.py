@@ -13,9 +13,9 @@ class UnhandledException(Exception):
 
 
 def rss_parser(
-    xml: str,
-    limit: Optional[int] = None,
-    json: bool = False,
+        xml: str,
+        limit: Optional[int] = None,
+        json: bool = False,
 ) -> List[str]:
     """
     RSS parser.
@@ -40,32 +40,42 @@ def rss_parser(
     """
     try:
         root = ET.fromstring(xml)
-
         channel = root.find('channel')
         items = channel.findall('.//item')
 
-        parsed_data = {
-            'title': channel.findtext('title'),
-            'link': channel.findtext('link'),
-            'lastBuildDate': channel.findtext('lastBuildDate'),
-            'pubDate': channel.findtext('pubDate'),
-            'language': channel.findtext('language'),
-            'categories': [category.text for category in channel.findall('.//category')],
-            'managingEditor': channel.findtext('managingEditor'),
-            'description': channel.findtext('description'),
-            'items': []
-        }
+        fields_channel = ['title',
+                          'link',
+                          'lastBuildDate',
+                          'pubDate',
+                          'language',
+                          './/category',
+                          'managingEditor',
+                          'description']
+        fields_item = ['title',
+                       'author',
+                       'pubDate',
+                       'link',
+                       'category',
+                       'description']
 
+        parsed_data = dict()
+        for elem in fields_channel:
+            if elem == './/category':
+                categories = [category.text for category in channel.findall('.//category')]
+                if categories:
+                    parsed_data['categories'] = categories
+            else:
+                if channel.findtext(elem):
+                    parsed_data[elem] = channel.findtext(elem)
+        parsed_data['items'] = []
+        item_data = dict()
         for item in items:
-            item_data = {
-                'title': item.findtext('title'),
-                'author': item.findtext('author'),
-                'pubDate': item.findtext('pubDate'),
-                'link': item.findtext('link'),
-                'category': item.findtext('category'),
-                'description': item.findtext('description')
-            }
-            parsed_data['items'].append(item_data)
+            item_data.clear()
+            for elem in fields_item:
+                if item.findtext(elem):
+                    item_data[elem] = item.findtext(elem)
+            if item_data:
+                parsed_data['items'].append(item_data)
 
             if limit and len(parsed_data['items']) >= limit:
                 break
@@ -74,24 +84,39 @@ def rss_parser(
             return [json_module.dumps(parsed_data, indent=2, ensure_ascii=False)]
         else:
             output = []
-            output.append(f"Feed: {parsed_data['title']}")
-            output.append(f"Link: {parsed_data['link']}")
-            output.append(f"Last Build Date: {parsed_data['lastBuildDate']}")
-            output.append(f"Publish Date: {parsed_data['pubDate']}")
-            output.append(f"Language: {parsed_data['language']}")
+            if parsed_data.get('title'):
+                output.append(f"Feed: {parsed_data.get('title')}")
+            if parsed_data.get('link'):
+                output.append(f"Link: {parsed_data.get('link')}")
+            if parsed_data.get('lastBuildDate'):
+                output.append(f"Last Build Date: {parsed_data.get('lastBuildDate')}")
+            if parsed_data.get('pubDate'):
+                output.append(f"Publish Date: {parsed_data.get('pubDate')}")
+            if parsed_data.get('language'):
+                output.append(f"Language: {parsed_data.get('language')}")
             categories = parsed_data.get('categories', [])
-            categories_str = " ".join(categories)
-            output.append(f"Categories: {categories_str}")
-            output.append(f"Editor: {parsed_data.get('managingEditor')}")
-            output.append(f"Description: {parsed_data['description']}\n")
+            if categories:
+                categories_str = " ".join(categories)
+                output.append(f"Categories: {categories_str}")
+            if parsed_data.get('managingEditor'):
+                output.append(f"Editor: {parsed_data.get('managingEditor')}")
+            if parsed_data.get('description'):
+                output.append(f"Description: {parsed_data.get('description')}\n")
 
             for item in parsed_data.get('items'):
-                output.append(f"Title: {item.get('title')}")
-                output.append(f"Author: {item.get('author')}")
-                output.append(f"Published: {item.get('pubDate')}")
-                output.append(f"Link: {item.get('link')}")
-                output.append(f"Category: {item.get('category')}\n")
-                output.append(f"{item.get('description')}\n")
+                if item.get('title'):
+                    output.append(f"Title: {item.get('title')}")
+                if item.get('author'):
+                    output.append(f"Author: {item.get('author')}")
+                if item.get('pubDate'):
+                    output.append(f"Published: {item.get('pubDate')}")
+                if item.get('link'):
+                    output.append(f"Link: {item.get('link')}")
+                if item.get('category'):
+                    output.append(f"Category: {item.get('category')}")
+                output.append("")
+                if item.get('description'):
+                    output.append(f"{item.get('description')}\n")
 
             return output
 
@@ -101,6 +126,7 @@ def rss_parser(
         error_message = f"An unexpected error occurred in 'rss_parser' func: {e}"
 
     return [error_message]
+
 
 def main(argv: Optional[Sequence] = None):
     """
