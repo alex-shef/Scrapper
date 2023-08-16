@@ -1,10 +1,7 @@
-# You shouldn't change  name of function or their arguments,
+# You shouldn't change  name of function or their arguments
 # but you can change content of the initial functions.
-import json
-import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
-from typing import Optional, Sequence
-
+from typing import List, Optional, Sequence
 import requests
 
 
@@ -13,56 +10,32 @@ class UnhandledException(Exception):
 
 
 def rss_parser(
-        xml: str,
-        limit: Optional[int] = None,
-):
+    xml: str,
+    limit: Optional[int] = None,
+    json: bool = False,
+) -> List[str]:
+    """
+    RSS parser.
 
-    try:
-        response = requests.get(xml)
-        response.raise_for_status()
-        xml_data = response.text
-        root = ET.fromstring(xml_data)
+    Args:
+        xml: XML document as a string.
+        limit: Number of the news to return. if None, returns all news.
+        json: If True, format output as JSON.
 
-        channel = root.find('channel')
-        items = channel.findall('.//item')
+    Returns:
+        List of strings.
+        Which then can be printed to stdout or written to file as a separate lines.
 
-        parsed_data = {
-            'title': channel.findtext('title'),
-            'link': channel.findtext('link'),
-            'lastBuildDate': channel.findtext('lastBuildDate'),
-            'pubDate': channel.findtext('pubDate'),
-            'language': channel.findtext('language'),
-            'categories': [category.text for category in channel.findall('.//category')],
-            'managingEditor': channel.findtext('managingEditor'),
-            'description': channel.findtext('description'),
-            'items': []
-        }
-
-        for item in items:
-            item_data = {
-                'title': item.findtext('title'),
-                'author': item.findtext('author'),
-                'pubDate': item.findtext('pubDate'),
-                'link': item.findtext('link'),
-                'category': item.findtext('category'),
-                'description': item.findtext('description')
-            }
-            parsed_data['items'].append(item_data)
-
-            if limit and len(parsed_data['items']) >= limit:
-                break
-
-        return parsed_data
-    except requests.exceptions.RequestException as request_error:
-        print(f"An error occurred while requesting the URL: {request_error}")
-        return {}
-    except ET.ParseError as parse_error:
-        print(f"An error occurred while parsing XML: {parse_error}")
-        return {}
-    except Exception as e:
-        print(f"An unexpected error 'rss_parser' func occurred: {e}")
-        return {}
-
+    Examples:
+        >>> xml = '<rss><channel><title>Some RSS Channel</title><link>https://some.rss.com</link><description>Some RSS Channel</description></channel></rss>'
+        >>> rss_parser(xml)
+        ["Feed: Some RSS Channel",
+        "Link: https://some.rss.com"]
+        >>> print("\\n".join(rss_parser(xmls)))
+        Feed: Some RSS Channel
+        Link: https://some.rss.com
+    """
+    # Your code goes here
 
 def main(argv: Optional[Sequence] = None):
     """
@@ -81,37 +54,12 @@ def main(argv: Optional[Sequence] = None):
     )
 
     args = parser.parse_args(argv)
-
-    parsed_data = rss_parser(args.source, args.limit)
-
-    if args.json:
-        try:
-            print(json.dumps(parsed_data, indent=2, ensure_ascii=False))
-        except (TypeError, ValueError, OverflowError) as e:
-            print(f"An error occurred while serializing to JSON: {e}")
-    else:
-        try:
-            print(f"Feed: {parsed_data.get('title')}")
-            print(f"Link: {parsed_data.get('link')}")
-            print(f"Last Build Date: {parsed_data.get('lastBuildDate')}")
-            print(f"Publish Date: {parsed_data.get('pubDate')}")
-            print(f"Language: {parsed_data.get('language')}")
-            categories = parsed_data.get('categories', [])
-            categories_str = " ".join(categories)
-            print(f"Categories: {categories_str}")
-            print(f"Editor: {parsed_data.get('managingEditor')}")
-            print(f"Description: {parsed_data.get('description')}\n")
-
-            for item in parsed_data.get('items'):
-                print(f"Title: {item.get('title')}")
-                print(f"Author: {item.get('author')}")
-                print(f"Published: {item.get('pubDate')}")
-                print(f"Link: {item.get('link')}")
-                print(f"Category: {item.get('category')}\n")
-                print(f"{item.get('description')}\n")
-            return 0
-        except Exception as e:
-            raise UnhandledException(e)
+    xml = requests.get(args.source).text
+    try:
+        print("\n".join(rss_parser(xml, args.limit, args.json)))
+        return 0
+    except Exception as e:
+        raise UnhandledException(e)
 
 
 if __name__ == "__main__":
